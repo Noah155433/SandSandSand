@@ -34,6 +34,10 @@ void OpenGL::Initialize(int& width, int& height, GLFWwindow*& window)
 	}
 
 	glViewport(0, 0, width, height);
+
+	stbi_set_flip_vertically_on_load(true);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void OpenGL::createVBO(unsigned int& VBO, float* vertexArray, int size)
@@ -79,11 +83,11 @@ void OpenGL::createTexture(unsigned int& texture, GLenum format, int width, int 
 	glTexImage2D(
 		GL_TEXTURE_2D,
 		0,
-		GL_R8,
+		format,
 		width,
 		height,
 		0,
-		GL_RED,
+		colors,
 		GL_UNSIGNED_BYTE,
 		data
 	);
@@ -98,4 +102,11 @@ void OpenGL::bindTexture(int index, unsigned int& texture, Shader shader)
 	glActiveTexture(index);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	shader.setInt("texture" + (char)(index + 48), index);
+}
+
+void OpenGL::loadImageData(const char* fileName, int& width, int& height, unsigned char*& data)
+{
+	int nrChannels;
+	data = stbi_load(fileName, &width, &height, &nrChannels, 0);
+
 }

@@ -15,6 +15,7 @@ void main()
 	int width = textureSize(texture1, 0).x;
 	int height = textureSize(texture1, 0).y;
 
+
 	float cell = texelFetch(texture1, pos, 0).r;
 	float newCell = 0.0;
 
@@ -32,7 +33,7 @@ void main()
 	ivec2 aboveLeftPos = pos + ivec2(-1.0, 1.0);
 	float aboveLeftCell = texelFetch(texture1, aboveLeftPos, 0).r;
 
-	if(aboveLeftPos.x < 0 || aboveLeftPos.y > height)
+	if(aboveLeftPos.x < 256 || aboveLeftPos.y > height)
 	{
 		aboveLeftCell = 0.0;
 	}
@@ -48,7 +49,7 @@ void main()
 	ivec2 belowLeftPos = pos + ivec2(-1.0, -1.0);
 	float belowLeftCell = texelFetch(texture1, belowLeftPos, 0).r;
 
-	if(belowLeftPos.x < 0 || belowLeftPos.y < 0)
+	if(belowLeftPos.x < 256 || belowLeftPos.y < 0)
 	{
 		belowLeftCell = 1.0;
 	}

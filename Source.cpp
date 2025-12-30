@@ -1,14 +1,11 @@
 ﻿#include "OpenGL.h"
-#include "stb_image.h"
+
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "shader_s.h"
-
-#include <iostream>
-#include <vector>
 
 void processInput(GLFWwindow* window);
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
@@ -64,9 +61,13 @@ int main()
 	unsigned int FBO;
 	glGenFramebuffers(1, &FBO);
 
-	GLuint tex1, tex2;
+	GLuint tex1, tex2, tex3;
+	int texWidth, texHeight;
+	unsigned char* data{};
 	openGL.createTexture(tex1, GL_R8, width, height, GL_RED, (void*)sand.data());
 	openGL.createTexture(tex2, GL_R8, width, height, GL_RED, (void*)sand.data());
+	openGL.loadImageData("SandSandSandTitle.png", texWidth, texHeight, data);
+	openGL.createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
 	
 	glfwSetCursorPosCallback(window, cursorPosCallback);
 
@@ -82,11 +83,12 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glm::mat4 TitleTransform = glm::mat4(1.0f);
-		TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0, 0.3, 0.0));
+		TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0, 0.7, 0.0));
 		TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.2f, 1.0f));
 
 		if (!ShouldSimulate)
 		{
+			openGL.bindTexture(0, tex3, uiShader);
 			uiShader.use();
 			uiShader.setMat4("model", TitleTransform);
 			glBindVertexArray(UIVAO);
@@ -95,6 +97,7 @@ int main()
 
 		if (ShouldSimulate)
 		{
+			openGL.bindTexture(0, tex1, simShader);
 			simShader.use();
 			simShader.setVec2("screenSize", glm::vec2(width, height));
 			simShader.setVec2("mousePos", mousePos);
