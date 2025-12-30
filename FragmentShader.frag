@@ -1,6 +1,13 @@
 #version 330 core
 
+uniform sampler2D texture1;
+uniform vec2 screenSize;
+
+out vec4 FragColor;
+
 void main()
 {
-	gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+
+	vec2 uv = gl_FragCoord.xy / screenSize;
+	FragColor = vec4(texture(texture1, uv).x * 255, texture(texture1, uv).x * 255, 0.0, 1.0);
 }
