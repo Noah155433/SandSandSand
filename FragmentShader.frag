@@ -8,6 +8,8 @@ out vec4 FragColor;
 void main()
 {
 
+
+
 	vec2 uv = gl_FragCoord.xy / screenSize;
 	FragColor = vec4(texture(texture1, uv).x * 255, texture(texture1, uv).x * 255, 0.0, 1.0);
 }

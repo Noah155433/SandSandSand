@@ -44,7 +44,7 @@ int main()
 	{
 		for (int j = 0; j < width; ++j)
 		{
-			sand[i * width + j] = ((i == height - 1) ? 1 : 0);
+			sand[i * width + j] = ((i >= height - 100) ? 1 : 0);
 		}
 	}
 
