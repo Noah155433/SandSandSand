@@ -16,23 +16,19 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 glm::vec2 mousePos = glm::vec2(0.0f);
 bool leftButtonPressed = false;
 
-bool ShouldSimulate = false;
+bool ShouldSimulate = true;
 
 int width, height;
 
 int main()
 {
 	
-	OpenGL openGl;
-
+	OpenGL openGL;
 	GLFWwindow* window;
-
-	openGl.Initialize(width, height, window);
+	openGL.Initialize(width, height, window);
 
 	std::vector<unsigned char> sand;
 	sand.resize(width * height);
-
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	Shader shader("VertexShader.vert", "FragmentShader.frag");
 	Shader simShader("VertexShader.vert", "SimulationShader.frag");
@@ -59,60 +55,20 @@ int main()
 	};
 
 	unsigned int VBO, VAO, UIVBO, UIVAO;
-	glGenBuffers(1, &VBO);
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-	glBufferData(GL_ARRAY_BUFFER, sizeof(squareVertices), squareVertices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glGenBuffers(1, &UIVBO);
-	glGenVertexArrays(1, &UIVAO);
-	glBindVertexArray(UIVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, UIVBO);
-
-	glBufferData(GL_ARRAY_BUFFER, sizeof(uiRectVertices), uiRectVertices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
+	int VaoAttribs[] = { 3, 2 };
+	openGL.createVBO(VBO, squareVertices, 3 * 6);
+	openGL.createVAO(VAO, VaoAttribs, 1);
+	openGL.createVBO(UIVBO, uiRectVertices, 5 * 6);
+	openGL.createVAO(UIVAO, VaoAttribs, 2);
 
 	unsigned int FBO;
 	glGenFramebuffers(1, &FBO);
 
 	GLuint tex1, tex2;
-	glGenTextures(1, &tex1);
-	glGenTextures(1, &tex2);
-
-	for (GLuint tex : {tex1, tex2})
-	{
-		glBindTexture(GL_TEXTURE_2D, tex);
-
-		glTexImage2D(
-			GL_TEXTURE_2D,
-			0,
-			GL_R8,
-			width,
-			height,
-			0,
-			GL_RED,
-			GL_UNSIGNED_BYTE,
-			(void*)sand.data()
-		);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	}
+	openGL.createTexture(tex1, GL_R8, width, height, GL_RED, (void*)sand.data());
+	openGL.createTexture(tex2, GL_R8, width, height, GL_RED, (void*)sand.data());
 	
 	glfwSetCursorPosCallback(window, cursorPosCallback);
-
-	glActiveTexture(0);
-	glBindTexture(GL_TEXTURE_2D, tex1);
-	shader.setInt("texture1", 0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

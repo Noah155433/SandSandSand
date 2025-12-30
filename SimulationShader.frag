@@ -102,3 +102,4 @@ void main()
 
 	FragColor = vec4(newCell, newCell, 0.0, 1.0);
 }
+	
