@@ -12,8 +12,12 @@
 #include <vector>
 
 void processInput(GLFWwindow* window);
+void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 
+glm::vec2 mousePos = glm::vec2(0.0f);
+bool leftButtonPressed = false;
 
+int width, height;
 
 int main()
 {
@@ -26,8 +30,8 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif // __APPLE__
 
-	int width = glfwGetVideoMode(glfwGetPrimaryMonitor())->width;
-	int height = glfwGetVideoMode(glfwGetPrimaryMonitor())->height;
+	width = glfwGetVideoMode(glfwGetPrimaryMonitor())->width;
+	height = glfwGetVideoMode(glfwGetPrimaryMonitor())->height;
 
 	GLFWwindow* window = glfwCreateWindow(width, height, "SandSandSand", glfwGetPrimaryMonitor(), NULL);
 	if (window == NULL)
@@ -39,14 +43,6 @@ int main()
 
 	std::vector<unsigned char> sand;
 	sand.resize(width * height);
-
-	for (int i = height - 1; i >= 0; --i)
-	{
-		for (int j = 0; j < width; ++j)
-		{
-			sand[i * width + j] = ((i >= height - 100) ? 1 : 0);
-		}
-	}
 
 	glfwMakeContextCurrent(window);
 
@@ -110,6 +106,7 @@ int main()
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 	
+	glfwSetCursorPosCallback(window, cursorPosCallback);
 
 	glActiveTexture(0);
 	glBindTexture(GL_TEXTURE_2D, tex1);
@@ -126,6 +123,8 @@ int main()
 
 		simShader.use();
 		simShader.setVec2("screenSize", glm::vec2(width, height));
+		simShader.setVec2("mousePos", mousePos);
+		simShader.setBool("leftButtonPressed", leftButtonPressed);
 		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex2, 0);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -142,10 +141,21 @@ int main()
 
 }
 
+void cursorPosCallback(GLFWwindow* window, double xPos, double yPos)
+{
+	mousePos = glm::vec2(xPos, height - yPos);
+}
+
 void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	}
+	leftButtonPressed = false;
+
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+	{
+		leftButtonPressed = true;
 	}
 }
