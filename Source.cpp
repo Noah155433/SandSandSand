@@ -1,5 +1,6 @@
-﻿#include "OpenGL.h"
-
+﻿#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include "stb_image.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -7,8 +8,17 @@
 
 #include "shader_s.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <random>
+
 void processInput(GLFWwindow* window);
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
+
+void createVBO(unsigned int& VBO, float* vertexArray, int vertexSize);
+void createVAO(unsigned int& VAO, int* VAOAttribs, int attribsSize);
+
 
 glm::vec2 mousePos = glm::vec2(0.0f);
 bool leftButtonPressed = false;
@@ -20,9 +30,18 @@ int width, height;
 int main()
 {
 	
-	OpenGL openGL;
-	GLFWwindow* window;
-	openGL.Initialize(width, height, window);
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	GLFWwindow* window = glfwCreateWindow(width, height, "Sand Sand Sand", glfwGetPrimaryMonitor(), NULL);
+
+	glfwMakeContextCurrent(window);
+
+	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+	glViewport(0, 0, width, height);
 
 	std::vector<unsigned char> sand;
 	sand.resize(width * height);
@@ -53,10 +72,10 @@ int main()
 
 	unsigned int VBO, VAO, UIVBO, UIVAO;
 	int VaoAttribs[] = { 3, 2 };
-	openGL.createVBO(VBO, squareVertices, 3 * 6);
-	openGL.createVAO(VAO, VaoAttribs, 1);
-	openGL.createVBO(UIVBO, uiRectVertices, 5 * 6);
-	openGL.createVAO(UIVAO, VaoAttribs, 2);
+	createVBO(VBO, squareVertices, 3 * 6);
+	createVAO(VAO, VaoAttribs, 1);
+	createVBO(UIVBO, uiRectVertices, 5 * 6);
+	createVAO(UIVAO, VaoAttribs, 2);
 
 	unsigned int FBO;
 	glGenFramebuffers(1, &FBO);
@@ -115,6 +134,36 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
+	}
+
+}
+
+void createVBO(unsigned int& VBO, float* vertexArray, int vertexSize)
+{
+	glGenBuffers(1, &VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertexSize, vertexArray, GL_STATIC_DRAW);
+}
+
+void createVAO(unsigned int& VAO, int* VAOAttribs, int attribsSize)
+{
+
+	int stride = 0;
+	int offset = 0;
+
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+	
+	for (int i = 0; i < attribsSize; ++i)
+	{
+		stride += VAOAttribs[i];
+	}
+
+	for (int i = 0; i < attribsSize; ++i)
+	{
+		glVertexAttribPointer(i, VAOAttribs[i], GL_INT, GL_FALSE, stride, (void*)(sizeof(float) * offset));
+		glEnableVertexAttribArray(i);
+		offset += VAOAttribs[i];
 	}
 
 }
