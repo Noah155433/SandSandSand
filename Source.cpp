@@ -19,13 +19,23 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 void createVBO(unsigned int& VBO, float* vertexArray, int vertexSize);
 void createVAO(unsigned int& VAO, int* VAOAttribs, int attribsSize);
 
+void createTexture(unsigned int& texture, GLenum format, int width, int height, GLenum colors, const void* data);
+void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data);
+void bindTexture(int index, unsigned int texture, Shader shader);
 
 glm::vec2 mousePos = glm::vec2(0.0f);
 bool leftButtonPressed = false;
 
-bool ShouldSimulate = true;
-
 int width, height;
+
+enum GameState
+{
+	GAMESTATE_MENU,
+	GAMESTATE_SIMULATION,
+	GAMESTATE_OPTIONS
+};
+
+GameState gamestate = GAMESTATE_MENU;
 
 int main()
 {
@@ -35,13 +45,33 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+#ifdef __APPLE__
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif // __APPLE__
+
+	width = glfwGetVideoMode(glfwGetPrimaryMonitor())->width;
+	height = glfwGetVideoMode(glfwGetPrimaryMonitor())->height;
+
 	GLFWwindow* window = glfwCreateWindow(width, height, "Sand Sand Sand", glfwGetPrimaryMonitor(), NULL);
+	if (window == NULL)
+	{
+		std::cout << "Window creation failed" << std::endl;
+	}
+
+	glfwGetFramebufferSize(window, &width, &height);
 
 	glfwMakeContextCurrent(window);
 
-	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Could not load GLL loader" << std::endl;
+	}
 
 	glViewport(0, 0, width, height);
+
+	stbi_set_flip_vertically_on_load(true);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	std::vector<unsigned char> sand;
 	sand.resize(width * height);
@@ -70,23 +100,32 @@ int main()
 		 1.0f, -1.0f, 0.0f, 1.0, 0.0
 	};
 
-	unsigned int VBO, VAO, UIVBO, UIVAO;
+	unsigned int VBO, VAO, UIVBO, UIVAO, BUTTONVBO, BUTTONVAO;
 	int VaoAttribs[] = { 3, 2 };
 	createVBO(VBO, squareVertices, 3 * 6);
 	createVAO(VAO, VaoAttribs, 1);
 	createVBO(UIVBO, uiRectVertices, 5 * 6);
 	createVAO(UIVAO, VaoAttribs, 2);
+	createVBO(BUTTONVBO, uiRectVertices, 5 * 6);
+	createVAO(BUTTONVAO, VaoAttribs, 2);
 
 	unsigned int FBO;
 	glGenFramebuffers(1, &FBO);
 
-	GLuint tex1, tex2, tex3;
-	int texWidth, texHeight;
+	unsigned int tex1, tex2, tex3, tex4, sandNoise;
+	int texWidth, texHeight, nrChannels;
 	unsigned char* data{};
-	openGL.createTexture(tex1, GL_R8, width, height, GL_RED, (void*)sand.data());
-	openGL.createTexture(tex2, GL_R8, width, height, GL_RED, (void*)sand.data());
-	openGL.loadImageData("SandSandSandTitle.png", texWidth, texHeight, data);
-	openGL.createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
+	createTexture(tex1, GL_R8, width, height, GL_RED, (void*)sand.data());
+	createTexture(tex2, GL_R8, width, height, GL_RED, (void*)sand.data());
+	loadImageData("SandSandSandTitle.png", texWidth, texHeight, nrChannels, data);
+	createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
+	stbi_image_free(data);
+	loadImageData("SandNoise.png", texWidth, texHeight, nrChannels, data);
+	createTexture(sandNoise, GL_RGB, texWidth, texHeight, GL_RGB, data);
+	stbi_image_free(data);
+	loadImageData("StartButton.png", texWidth, texHeight, nrChannels, data);
+	createTexture(tex4, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
+	stbi_image_free(data);
 	
 	glfwSetCursorPosCallback(window, cursorPosCallback);
 
@@ -101,22 +140,28 @@ int main()
 
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glm::mat4 TitleTransform = glm::mat4(1.0f);
-		TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0, 0.7, 0.0));
-		TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.2f, 1.0f));
-
-		if (!ShouldSimulate)
+		switch (gamestate)
 		{
-			openGL.bindTexture(0, tex3, uiShader);
+		case GAMESTATE_MENU:
+			glm::mat4 TitleTransform = glm::mat4(1.0f);
+			TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0f, 0.7f, 0.0f));
+			TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.2f, 1.0f));
+			bindTexture(0, tex3, uiShader);
 			uiShader.use();
 			uiShader.setMat4("model", TitleTransform);
 			glBindVertexArray(UIVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
-		}
-
-		if (ShouldSimulate)
-		{
-			openGL.bindTexture(0, tex1, simShader);
+			TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0f, -3.0f, 0.0f));
+			TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.6f, 0.0));
+			bindTexture(0, tex4, uiShader);
+			uiShader.use();
+			uiShader.setMat4("model", TitleTransform);
+			glBindVertexArray(UIVAO);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			break;
+		case GAMESTATE_SIMULATION:
+			bindTexture(0, tex1, simShader);
+			bindTexture(1, sandNoise, simShader);
 			simShader.use();
 			simShader.setVec2("screenSize", glm::vec2(width, height));
 			simShader.setVec2("mousePos", mousePos);
@@ -132,6 +177,9 @@ int main()
 			shader.setVec2("screenSize", glm::vec2(width, height));
 			glBindVertexArray(VAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
+			break;
+		default:
+			break;
 		}
 
 	}
@@ -148,24 +196,63 @@ void createVBO(unsigned int& VBO, float* vertexArray, int vertexSize)
 void createVAO(unsigned int& VAO, int* VAOAttribs, int attribsSize)
 {
 
-	int stride = 0;
-	int offset = 0;
-
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
-	
+
+	int stride = 0;
 	for (int i = 0; i < attribsSize; ++i)
 	{
 		stride += VAOAttribs[i];
 	}
 
+	int offset = 0;
+
 	for (int i = 0; i < attribsSize; ++i)
 	{
-		glVertexAttribPointer(i, VAOAttribs[i], GL_INT, GL_FALSE, stride, (void*)(sizeof(float) * offset));
+		glVertexAttribPointer(i, VAOAttribs[i], GL_FLOAT, GL_FALSE, stride * sizeof(float),
+			(void*)(sizeof(float) * offset));
 		glEnableVertexAttribArray(i);
 		offset += VAOAttribs[i];
 	}
 
+
+}
+
+void createTexture(unsigned int& texture, GLenum format, int width, int height, GLenum colors, const void* data)
+{
+
+	glGenTextures(1, &texture);
+
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		format,
+		width,
+		height,
+		0,
+		colors,
+		GL_UNSIGNED_BYTE,
+		data
+	);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+
+}
+void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data)
+{
+	data = stbi_load(fileName, &width, &height, &nrChannels, 0);
+	
+}
+
+void bindTexture(int index, unsigned int texture, Shader shader)
+{
+	glActiveTexture(index);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	shader.setInt("texture" + (char)(index + 49), index);
 }
 
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos)

@@ -1,6 +1,7 @@
 #version 330 core
 
 uniform sampler2D texture1;
+uniform sampler2D texture2;
 
 out vec4 FragColor;
 
@@ -54,7 +55,7 @@ void main()
 
 	if(distance(vec2(pos), mousePos) < 5 && leftButtonPressed && mousePos.x > size.x / 5 + 5)
 	{
-		newState(1.0);
+		newState(1.0 * texelFetch(texture2, pos, 0).r);
 		return;
 	}
 
@@ -68,9 +69,19 @@ void main()
 	}
 	if(cell < 0.1)
 	{
-		if(aboveCell > 0.0 || ((aboveRightCell > 0.0 || aboveLeftCell > 0.0) && belowCell > 0.0))
+		if(aboveCell > 0.0)
 		{
-			newState(1.0);
+			newState(aboveCell);
+			return;
+		}
+		if (aboveLeftCell > 0.0 && belowCell > 0.0)
+		{
+			newState(aboveLeftCell);
+			return;
+		}
+		if(aboveRightCell > 0.0 && belowCell > 0.0)
+		{
+			newState(aboveRightCell);
 			return;
 		}
 	}
