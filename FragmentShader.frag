@@ -1,6 +1,7 @@
 #version 330 core
 
 uniform sampler2D texture1;
+uniform sampler2D texture2;
 uniform vec2 screenSize;
 
 out vec4 FragColor;

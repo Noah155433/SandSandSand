@@ -55,7 +55,7 @@ void main()
 
 	if(distance(vec2(pos), mousePos) < 5 && leftButtonPressed && mousePos.x > size.x / 5 + 5)
 	{
-		newState(1.0 * texelFetch(texture2, pos, 0).r);
+		newState(1);
 		return;
 	}
 

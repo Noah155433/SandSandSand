@@ -23,6 +23,8 @@ void createTexture(unsigned int& texture, GLenum format, int width, int height, 
 void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data);
 void bindTexture(int index, unsigned int texture, Shader shader);
 
+void checkButtons(glm::mat4** modelMatrices, int size);
+
 glm::vec2 mousePos = glm::vec2(0.0f);
 bool leftButtonPressed = false;
 
@@ -121,7 +123,7 @@ int main()
 	createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
 	stbi_image_free(data);
 	loadImageData("SandNoise.png", texWidth, texHeight, nrChannels, data);
-	createTexture(sandNoise, GL_RGB, texWidth, texHeight, GL_RGB, data);
+	createTexture(sandNoise, GL_RGB, texWidth, texHeight, GL_RED, data);
 	stbi_image_free(data);
 	loadImageData("StartButton.png", texWidth, texHeight, nrChannels, data);
 	createTexture(tex4, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
@@ -140,10 +142,13 @@ int main()
 
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		glm::mat4 TitleTransform = glm::mat4(1.0f);
+		glm::mat4 startButtonTransform = glm::mat4(1.0f);
+		glm::mat4* buttonMatrices[] = { &startButtonTransform };
+
 		switch (gamestate)
 		{
-		case GAMESTATE_MENU:
-			glm::mat4 TitleTransform = glm::mat4(1.0f);
+		case GAMESTATE_MENU:	
 			TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0f, 0.7f, 0.0f));
 			TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.2f, 1.0f));
 			bindTexture(0, tex3, uiShader);
@@ -151,18 +156,19 @@ int main()
 			uiShader.setMat4("model", TitleTransform);
 			glBindVertexArray(UIVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
-			TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0f, -3.0f, 0.0f));
-			TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.6f, 0.0));
+			startButtonTransform = glm::translate(startButtonTransform, glm::vec3(0.0f, 0.0f, 0.0f));
+			startButtonTransform = glm::scale(startButtonTransform, glm::vec3(0.25f, 0.2f, 0.0));
 			bindTexture(0, tex4, uiShader);
 			uiShader.use();
-			uiShader.setMat4("model", TitleTransform);
+			uiShader.setMat4("model", startButtonTransform);
 			glBindVertexArray(UIVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
+			checkButtons(buttonMatrices, 1);
 			break;
 		case GAMESTATE_SIMULATION:
+			simShader.use();
 			bindTexture(0, tex1, simShader);
 			bindTexture(1, sandNoise, simShader);
-			simShader.use();
 			simShader.setVec2("screenSize", glm::vec2(width, height));
 			simShader.setVec2("mousePos", mousePos);
 			simShader.setBool("leftButtonPressed", leftButtonPressed);
@@ -172,9 +178,10 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 			std::swap(tex1, tex2);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glBindTexture(GL_TEXTURE_2D, tex1);
 			shader.use();
+			bindTexture(0, tex1, shader);
 			shader.setVec2("screenSize", glm::vec2(width, height));
+			bindTexture(1, sandNoise, shader);
 			glBindVertexArray(VAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 			break;
@@ -242,6 +249,7 @@ void createTexture(unsigned int& texture, GLenum format, int width, int height, 
 
 
 }
+
 void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data)
 {
 	data = stbi_load(fileName, &width, &height, &nrChannels, 0);
@@ -250,9 +258,11 @@ void loadImageData(const char* fileName, int& width, int& height, int& nrChannel
 
 void bindTexture(int index, unsigned int texture, Shader shader)
 {
-	glActiveTexture(index);
+	glActiveTexture(GL_TEXTURE0 + index);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	shader.setInt("texture" + (char)(index + 49), index);
+
+	std::string uniformName = "texture" + std::to_string(index + 1);
+	shader.setInt(uniformName.c_str(), index);
 }
 
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos)
@@ -272,4 +282,45 @@ void processInput(GLFWwindow* window)
 	{
 		leftButtonPressed = true;
 	}
+}
+
+void checkButtons(glm::mat4** modelMatrices, int size)
+{
+	glm::vec4 buttonVertices[] =
+	{
+		glm::vec4(-1, -1, 0, 1),
+		glm::vec4(1, -1, 0, 1),
+		glm::vec4(-1, 1, 0, 1),
+		glm::vec4(1, 1, 0, 1)
+	};
+
+	glm::vec4 startButtonWorldCorner[4];
+
+	for (int i = 0; i < 4; ++i)
+	{
+		startButtonWorldCorner[i] = *modelMatrices[0] * buttonVertices[i];
+	}
+
+	glm::vec2 startButtonScreenCorner[4];
+
+	for (int i = 0; i < 4; ++i)
+	{
+		float x = (startButtonWorldCorner[i].x * 0.5f + 0.5f) * width;
+		float y = (startButtonWorldCorner[i].y * 0.5f + 0.5f) * height;
+
+		startButtonScreenCorner[i] = { x, y };
+	}
+
+	float minx = startButtonScreenCorner[0].x;
+	float miny = startButtonScreenCorner[1].y;
+	float maxx = startButtonScreenCorner[3].x;
+	float maxy = startButtonScreenCorner[2].y;
+
+	std::cout << "Min x: " << minx << " Min y: " << miny << " Max x: " << maxx << " Max y: " << maxy << std::endl;
+
+	if (leftButtonPressed && mousePos.x > minx && mousePos.x < maxx && mousePos.y > miny && mousePos.y < maxy)
+	{
+		gamestate = GAMESTATE_SIMULATION;
+	}
+
 }
