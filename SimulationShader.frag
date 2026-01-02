@@ -36,6 +36,12 @@ vec3 getPixelValue(ivec2 offset, ivec2 pos)
 	return texelFetch(texture1, p, 0).rgb;
 }
 
+uint hash(uvec2 p) 
+{
+	p = p * 1664525u + 1013904223u;
+	return p.x ^ p.y;
+}
+
 void main()
 {
 
@@ -43,6 +49,8 @@ void main()
 
 	ivec2 size = textureSize(texture1, 0);
 
+	
+	bool randLeftFirst = (hash(uvec2(pos)) & 1u) == 0u;
 
 	vec3 cell = texelFetch(texture1, pos, 0).rgb;
 
@@ -59,18 +67,23 @@ void main()
 
 	if(distance(vec2(pos), mousePos) < 5 && leftButtonPressed && mousePos.x > size.x / 5 + 5)
 	{
-		newState(spawnColor * texelFetch(texture2, pos, 0).r);
+		newState(spawnColor);
 		return;
 	}
 
 	if(cell.r > 0.0)
 	{
-		if(belowCell.r < 1.0)
+		if(belowCell.r > 0.5 && belowRightCell.r > 0.5 && belowLeftCell.r > 0.5)
+		{
+			newState(belowCell);
+			return;
+		}
+		if(belowCell.r < 0.1)
 		{
 			newState(vec3(0.0));
 			return;
 		}
-		if((belowRightCell.r < 1.0 || belowLeftCell.r < 1.0) && belowCell.r > 0.0)
+		if((belowRightCell.r < 0.1 || belowLeftCell.r < 0.1) && belowCell.r > 0.5)
 		{
 			newState(vec3(0.0));
 			return;
@@ -79,12 +92,17 @@ void main()
 
 	if(cell.b > 0.0)
 	{
-		if(belowCell.r < 1.0 && belowCell.b < 1.0)
+		if((belowCell.r > 0.5 || belowCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5))
+		{
+			newState(vec3(0.0, 0.0, 1.0));
+			return;
+		}
+		if(belowCell.r < 0.1 && belowCell.b < 0.1)
 		{
 			newState(vec3(0.0));
 			return;
 		}
-		if(((belowRightCell.b < 1.0 && belowRightCell.r < 1.0) || (belowLeftCell.b < 1.0 && belowLeftCell.r < 1.0)) && (belowCell.b > 0.0 || belowCell.r > 0.0))
+		if(((belowRightCell.b < 0.1 && belowRightCell.r < 0.1) || (belowLeftCell.b < 0.1 && belowLeftCell.r < 0.1)) && (belowCell.b > 0.0 || belowCell.r > 0.0))
 		{
 			newState(vec3(0.0));
 			return;
@@ -103,16 +121,53 @@ void main()
 			newState(aboveCell);
 			return;
 		}
-		if((aboveRightCell.r > 0.0 || aboveRightCell.b > 0.0) && (belowCell.r > 0.0 || belowCell.b > 0.0))
+		if(randLeftFirst)
 		{
-			newState(aboveRightCell);
-			return;
+			if((aboveRightCell.r > 0.0 || aboveRightCell.b > 0.0) && (rightCell.r > 0.5 || rightCell.b > 0.5))
+			{
+				newState(aboveRightCell);
+				return;
+			}
+			if((aboveLeftCell.r > 0.0 || aboveLeftCell.b > 0.0) && (leftCell.r > 0.5 || leftCell.b > 0.5))
+			{
+				newState(aboveLeftCell);
+				return;
+			}
+			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && leftCell.b > 0.5)
+			{
+				newState(leftCell);
+				return;
+			}
+			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && rightCell.b > 0.5)
+			{
+				newState(rightCell);
+				return;
+			}
 		}
-		if((aboveLeftCell.r > 0.0 || aboveLeftCell.b > 0.0) && (belowCell.r > 0.0 || belowCell.b > 0.0))
+		else
 		{
-			newState(aboveLeftCell);
-			return;
+			if((aboveLeftCell.r > 0.0 || aboveLeftCell.b > 0.0) && (leftCell.r > 0.5 || leftCell.b > 0.5))
+			{
+				newState(aboveLeftCell);
+				return;
+			}
+			if((aboveRightCell.r > 0.0 || aboveRightCell.b > 0.0) && (rightCell.r > 0.5 || rightCell.b > 0.5))
+			{
+				newState(aboveRightCell);
+				return;
+			}
+			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && rightCell.b > 0.5)
+			{
+				newState(rightCell);
+				return;
+			}
+			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && leftCell.b > 0.5)
+			{
+				newState(leftCell);
+				return;
+			}
 		}
+
 	}
 	
 	FragColor = vec4(cell, 1.0);

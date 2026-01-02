@@ -384,11 +384,11 @@ void processInput(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 	{
-		spawnColor = glm::vec3(1.0f, 0.0f, 0.0f);
+		spawnColor = glm::vec3(0.5f, 0.0f, 0.0f);
 	}
 	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 	{
-		spawnColor = glm::vec3(0.0f, 0.0f, 1.0f);
+		spawnColor = glm::vec3(0.0f, 0.0f, 0.5f);
 	}
 
 	leftButtonPressed = false;
