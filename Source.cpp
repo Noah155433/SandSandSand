@@ -23,7 +23,8 @@ void createTexture(unsigned int& texture, GLenum format, int width, int height, 
 void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data);
 void bindTexture(int index, unsigned int texture, Shader shader);
 
-void checkButtons(glm::mat4** modelMatrices, int size);
+
+void startGame();
 
 glm::vec2 mousePos = glm::vec2(0.0f);
 bool leftButtonPressed = false;
@@ -37,7 +38,99 @@ enum GameState
 	GAMESTATE_OPTIONS
 };
 
+class Button
+{
+public:
+	Button();
+	~Button();
+
+	void renderButton();
+	void setMinMax();
+
+	glm::vec2 m_size;
+	glm::vec2 m_position;
+	unsigned int m_texture;
+	unsigned int m_VAO;
+	Shader* m_shader;
+	int m_index;
+	void (*m_func)();
+	GameState m_buttonState;
+	int m_minX;
+	int m_minY;
+	int m_maxX;
+	int m_maxY;
+
+};
+
+Button::Button()
+{
+	m_size = glm::vec2(1.0f);
+	m_position = glm::vec2(1.0f);
+	m_texture = 0;
+	m_VAO = 0;
+	m_shader = 0;
+	m_index = 0;
+	m_func = 0;
+	m_buttonState = GAMESTATE_MENU;
+
+}
+
+Button::~Button()
+{
+}
+
+void Button::renderButton()
+{
+	glm::mat4 modelMatrix = glm::mat4(1.0f);
+	modelMatrix = glm::translate(modelMatrix, glm::vec3(m_position, 0.0f));
+	modelMatrix = glm::scale(modelMatrix, glm::vec3(m_size, 0.0f));
+	m_shader->use();
+	bindTexture(0, m_texture, *m_shader);
+	m_shader->setMat4("model", modelMatrix);
+	glBindVertexArray(m_VAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void Button::setMinMax()
+{
+	glm::vec4 buttonVertices[] =
+	{
+		glm::vec4(-1, -1, 0, 1),
+		glm::vec4(1, -1, 0, 1),
+		glm::vec4(-1, 1, 0, 1),
+		glm::vec4(1, 1, 0, 1)
+	};
+
+	glm::mat4 modelMatrix = glm::mat4(1.0f);
+	modelMatrix = glm::translate(modelMatrix, glm::vec3(m_position, 0.0f));
+	modelMatrix = glm::scale(modelMatrix, glm::vec3(m_size, 0.0f));
+
+	glm::vec4 startButtonWorldCorner[4];
+
+	for (int i = 0; i < 4; ++i)
+	{
+		startButtonWorldCorner[i] = modelMatrix * buttonVertices[i];
+	}
+
+	glm::vec2 startButtonScreenCorner[4];
+
+	for (int i = 0; i < 4; ++i)
+	{
+		float x = (startButtonWorldCorner[i].x * 0.5f + 0.5f) * width;
+		float y = (startButtonWorldCorner[i].y * 0.5f + 0.5f) * height;
+
+		startButtonScreenCorner[i] = { x, y };
+	}
+
+	m_minX = startButtonScreenCorner[0].x;
+	m_minY = startButtonScreenCorner[1].y;
+	m_maxX = startButtonScreenCorner[3].x;
+	m_maxY = startButtonScreenCorner[2].y;
+}
+
 GameState gamestate = GAMESTATE_MENU;
+
+void checkButtons(Button* buttons, int size);
 
 int main()
 {
@@ -133,6 +226,17 @@ int main()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	Button startButton;
+	startButton.m_position = glm::vec2(0.0f);
+	startButton.m_size = glm::vec2(0.25f, 0.2f);
+	startButton.m_texture = tex4;
+	startButton.m_VAO = BUTTONVAO;
+	startButton.m_shader = &uiShader;
+	startButton.m_index = 1;
+	startButton.m_func = startGame;
+	startButton.m_buttonState = GAMESTATE_MENU;
+	startButton.setMinMax();
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -144,26 +248,20 @@ int main()
 
 		glm::mat4 TitleTransform = glm::mat4(1.0f);
 		glm::mat4 startButtonTransform = glm::mat4(1.0f);
-		glm::mat4* buttonMatrices[] = { &startButtonTransform };
+		Button buttons[] = { startButton };
 
 		switch (gamestate)
 		{
 		case GAMESTATE_MENU:	
 			TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0f, 0.7f, 0.0f));
 			TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.2f, 1.0f));
-			bindTexture(0, tex3, uiShader);
 			uiShader.use();
+			bindTexture(0, tex3, uiShader);
 			uiShader.setMat4("model", TitleTransform);
 			glBindVertexArray(UIVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
-			startButtonTransform = glm::translate(startButtonTransform, glm::vec3(0.0f, 0.0f, 0.0f));
-			startButtonTransform = glm::scale(startButtonTransform, glm::vec3(0.25f, 0.2f, 0.0));
-			bindTexture(0, tex4, uiShader);
-			uiShader.use();
-			uiShader.setMat4("model", startButtonTransform);
-			glBindVertexArray(UIVAO);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-			checkButtons(buttonMatrices, 1);
+			startButton.renderButton();
+			checkButtons(buttons, 1);
 			break;
 		case GAMESTATE_SIMULATION:
 			simShader.use();
@@ -284,43 +382,29 @@ void processInput(GLFWwindow* window)
 	}
 }
 
-void checkButtons(glm::mat4** modelMatrices, int size)
+void checkButtons(Button* buttons, int size)
 {
-	glm::vec4 buttonVertices[] =
+	
+	for (int i = 0; i < size; ++i)
 	{
-		glm::vec4(-1, -1, 0, 1),
-		glm::vec4(1, -1, 0, 1),
-		glm::vec4(-1, 1, 0, 1),
-		glm::vec4(1, 1, 0, 1)
-	};
+		float minX = buttons[i].m_minX;
+		float minY = buttons[i].m_minY;
+		float maxX = buttons[i].m_maxX;
+		float maxY = buttons[i].m_maxY;
 
-	glm::vec4 startButtonWorldCorner[4];
+		if (leftButtonPressed && mousePos.x > minX && mousePos.x < maxX && mousePos.y > minY && mousePos.y < maxY)
+		{
+			buttons[i].m_func();
+			std::cout << buttons[i].m_index << std::endl;
+		}
 
-	for (int i = 0; i < 4; ++i)
-	{
-		startButtonWorldCorner[i] = *modelMatrices[0] * buttonVertices[i];
+		std::cout << buttons[i].m_minX << " | " << buttons[i].m_minY << " | " << buttons[i].m_maxX << " | " << buttons[i].m_maxY << std::endl;
+
 	}
 
-	glm::vec2 startButtonScreenCorner[4];
+}
 
-	for (int i = 0; i < 4; ++i)
-	{
-		float x = (startButtonWorldCorner[i].x * 0.5f + 0.5f) * width;
-		float y = (startButtonWorldCorner[i].y * 0.5f + 0.5f) * height;
-
-		startButtonScreenCorner[i] = { x, y };
-	}
-
-	float minx = startButtonScreenCorner[0].x;
-	float miny = startButtonScreenCorner[1].y;
-	float maxx = startButtonScreenCorner[3].x;
-	float maxy = startButtonScreenCorner[2].y;
-
-	std::cout << "Min x: " << minx << " Min y: " << miny << " Max x: " << maxx << " Max y: " << maxy << std::endl;
-
-	if (leftButtonPressed && mousePos.x > minx && mousePos.x < maxx && mousePos.y > miny && mousePos.y < maxy)
-	{
-		gamestate = GAMESTATE_SIMULATION;
-	}
-
+void startGame()
+{
+	gamestate = GAMESTATE_SIMULATION;
 }
