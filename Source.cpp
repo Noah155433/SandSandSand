@@ -38,11 +38,11 @@ enum GameState
 	GAMESTATE_OPTIONS
 };
 
-class Button
+class UIElement
 {
 public:
-	Button();
-	~Button();
+	UIElement();
+	~UIElement();
 
 	void renderButton();
 	void setMinMax();
@@ -62,7 +62,7 @@ public:
 
 };
 
-Button::Button()
+UIElement::UIElement()
 {
 	m_size = glm::vec2(1.0f);
 	m_position = glm::vec2(1.0f);
@@ -75,11 +75,11 @@ Button::Button()
 
 }
 
-Button::~Button()
+UIElement::~UIElement()
 {
 }
 
-void Button::renderButton()
+void UIElement::renderButton()
 {
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
 	modelMatrix = glm::translate(modelMatrix, glm::vec3(m_position, 0.0f));
@@ -91,7 +91,7 @@ void Button::renderButton()
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void Button::setMinMax()
+void UIElement::setMinMax()
 {
 	glm::vec4 buttonVertices[] =
 	{
@@ -130,7 +130,9 @@ void Button::setMinMax()
 
 GameState gamestate = GAMESTATE_MENU;
 
-void checkButtons(Button* buttons, int size);
+void checkButtons(UIElement* buttons, int size);
+
+glm::vec3 spawnColor = glm::vec3(1.0f, 0.0f, 0.0f);
 
 int main()
 {
@@ -169,7 +171,7 @@ int main()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	std::vector<unsigned char> sand;
-	sand.resize(width * height);
+	sand.resize(width * height * 3);
 
 	Shader shader("VertexShader.vert", "FragmentShader.frag");
 	Shader simShader("VertexShader.vert", "SimulationShader.frag");
@@ -210,8 +212,8 @@ int main()
 	unsigned int tex1, tex2, tex3, tex4, sandNoise;
 	int texWidth, texHeight, nrChannels;
 	unsigned char* data{};
-	createTexture(tex1, GL_R8, width, height, GL_RED, (void*)sand.data());
-	createTexture(tex2, GL_R8, width, height, GL_RED, (void*)sand.data());
+	createTexture(tex1, GL_RGB, width, height, GL_RGB, (void*)sand.data());
+	createTexture(tex2, GL_RGB, width, height, GL_RGB, (void*)sand.data());
 	loadImageData("SandSandSandTitle.png", texWidth, texHeight, nrChannels, data);
 	createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
 	stbi_image_free(data);
@@ -226,7 +228,7 @@ int main()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	Button startButton;
+	UIElement startButton;
 	startButton.m_position = glm::vec2(0.0f);
 	startButton.m_size = glm::vec2(0.25f, 0.2f);
 	startButton.m_texture = tex4;
@@ -236,6 +238,17 @@ int main()
 	startButton.m_func = startGame;
 	startButton.m_buttonState = GAMESTATE_MENU;
 	startButton.setMinMax();
+
+	UIElement Title;
+	Title.m_position = glm::vec2(0.0f, 0.7f);
+	Title.m_size = glm::vec2(0.5f, 0.2f);
+	Title.m_texture = tex3;
+	Title.m_VAO = UIVAO;
+	Title.m_shader = &uiShader;
+	Title.m_index = 0;
+	Title.m_func = nullptr;
+	Title.m_buttonState = GAMESTATE_MENU;
+	Title.setMinMax();
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -248,18 +261,12 @@ int main()
 
 		glm::mat4 TitleTransform = glm::mat4(1.0f);
 		glm::mat4 startButtonTransform = glm::mat4(1.0f);
-		Button buttons[] = { startButton };
+		UIElement buttons[] = { startButton };
 
 		switch (gamestate)
 		{
 		case GAMESTATE_MENU:	
-			TitleTransform = glm::translate(TitleTransform, glm::vec3(0.0f, 0.7f, 0.0f));
-			TitleTransform = glm::scale(TitleTransform, glm::vec3(0.5f, 0.2f, 1.0f));
-			uiShader.use();
-			bindTexture(0, tex3, uiShader);
-			uiShader.setMat4("model", TitleTransform);
-			glBindVertexArray(UIVAO);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
+			Title.renderButton();
 			startButton.renderButton();
 			checkButtons(buttons, 1);
 			break;
@@ -270,6 +277,7 @@ int main()
 			simShader.setVec2("screenSize", glm::vec2(width, height));
 			simShader.setVec2("mousePos", mousePos);
 			simShader.setBool("leftButtonPressed", leftButtonPressed);
+			simShader.setVec3("spawnColor", spawnColor);
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 			glBindVertexArray(VAO);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex2, 0);
@@ -374,6 +382,15 @@ void processInput(GLFWwindow* window)
 	{
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 	}
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	{
+		spawnColor = glm::vec3(1.0f, 0.0f, 0.0f);
+	}
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	{
+		spawnColor = glm::vec3(0.0f, 0.0f, 1.0f);
+	}
+
 	leftButtonPressed = false;
 
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
@@ -382,7 +399,7 @@ void processInput(GLFWwindow* window)
 	}
 }
 
-void checkButtons(Button* buttons, int size)
+void checkButtons(UIElement* buttons, int size)
 {
 	
 	for (int i = 0; i < size; ++i)
