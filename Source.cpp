@@ -21,7 +21,7 @@ void createVAO(unsigned int& VAO, int* VAOAttribs, int attribsSize);
 
 void createTexture(unsigned int& texture, GLenum format, int width, int height, GLenum colors, const void* data);
 void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data);
-void bindTexture(int index, unsigned int texture, Shader shader);
+void bindTexture(int index, unsigned int texture, Shader& shader);
 
 
 void startGame();
@@ -132,7 +132,7 @@ GameState gamestate = GAMESTATE_MENU;
 
 void checkButtons(UIElement* buttons, int size);
 
-glm::vec3 spawnColor = glm::vec3(1.0f, 0.0f, 0.0f);
+int spawnColor = 1;
 
 int main()
 {
@@ -171,7 +171,7 @@ int main()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	std::vector<unsigned char> sand;
-	sand.resize(width * height * 3);
+	sand.resize(width * height);
 
 	Shader shader("VertexShader.vert", "FragmentShader.frag");
 	Shader simShader("VertexShader.vert", "SimulationShader.frag");
@@ -208,12 +208,16 @@ int main()
 
 	unsigned int FBO;
 	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	GLenum attachments[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, attachments);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	unsigned int tex1, tex2, tex3, tex4, sandNoise;
 	int texWidth, texHeight, nrChannels;
 	unsigned char* data{};
-	createTexture(tex1, GL_RGB, width, height, GL_RGB, (void*)sand.data());
-	createTexture(tex2, GL_RGB, width, height, GL_RGB, (void*)sand.data());
+	createTexture(tex1, GL_R8UI, width, height, GL_RED_INTEGER, (void*)sand.data());
+	createTexture(tex2, GL_R8UI, width, height, GL_RED_INTEGER, (void*)sand.data());
 	loadImageData("SandSandSandTitle.png", texWidth, texHeight, nrChannels, data);
 	createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
 	stbi_image_free(data);
@@ -277,7 +281,7 @@ int main()
 			simShader.setVec2("screenSize", glm::vec2(width, height));
 			simShader.setVec2("mousePos", mousePos);
 			simShader.setBool("leftButtonPressed", leftButtonPressed);
-			simShader.setVec3("spawnColor", spawnColor);
+			simShader.setInt("spawnColor", spawnColor);
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 			glBindVertexArray(VAO);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex2, 0);
@@ -333,27 +337,25 @@ void createVAO(unsigned int& VAO, int* VAOAttribs, int attribsSize)
 
 void createTexture(unsigned int& texture, GLenum format, int width, int height, GLenum colors, const void* data)
 {
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
-	glGenTextures(1, &texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        format,
+        width,
+        height,
+        0,
+        colors,
+        GL_UNSIGNED_BYTE,
+        data
+    );
 
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		format,
-		width,
-		height,
-		0,
-		colors,
-		GL_UNSIGNED_BYTE,
-		data
-	);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
 void loadImageData(const char* fileName, int& width, int& height, int& nrChannels, unsigned char*& data)
@@ -362,7 +364,7 @@ void loadImageData(const char* fileName, int& width, int& height, int& nrChannel
 	
 }
 
-void bindTexture(int index, unsigned int texture, Shader shader)
+void bindTexture(int index, unsigned int texture, Shader& shader)
 {
 	glActiveTexture(GL_TEXTURE0 + index);
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -384,11 +386,11 @@ void processInput(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 	{
-		spawnColor = glm::vec3(0.5f, 0.0f, 0.0f);
+		spawnColor = 1;
 	}
 	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 	{
-		spawnColor = glm::vec3(0.0f, 0.0f, 0.5f);
+		spawnColor = 4;
 	}
 
 	leftButtonPressed = false;

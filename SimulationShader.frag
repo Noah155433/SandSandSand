@@ -1,39 +1,91 @@
 #version 330 core
+layout(location = 0) out uvec4 outColor;
 
-uniform sampler2D texture1;
+uniform usampler2D texture1;
 uniform sampler2D texture2;
-
-out vec4 FragColor;
 
 uniform vec2 mousePos;
 uniform bool leftButtonPressed;
-uniform vec3 spawnColor;
+uniform int spawnColor;
 
-void newState(vec3 value)
+void newState(int value)
 {
-	FragColor = vec4(value, 1.0);
+	if(value == 0)
+	{
+		outColor = uvec4(0, 0, 0, 1);
+		return;
+	}
+	if(value == 1)
+	{
+		outColor = uvec4(1, 0, 0, 1);
+		return;
+	}
+	if(value == 2)
+	{
+		outColor = uvec4(2, 0, 0, 1);
+		return;
+	}
+	if(value == 3)
+	{
+		outColor = uvec4(3, 0, 0, 1);
+		return;
+	}
+	if(value == 4)
+	{
+		outColor = uvec4(4, 0, 0, 1);
+		return;
+	}
 	return;
 }
+
+// 0 = air
+// 1 = sand
+// 2 = water
+// 3 = falling sand
+// 4 = falling water
 	
-vec3 getPixelValue(ivec2 offset, ivec2 pos)
+int getPixelValue(ivec2 offset, ivec2 pos)
 {
 
 	ivec2 size = textureSize(texture1, 0);
 	ivec2 p = pos + offset;
 
 	if (p.y < 0)
-        return vec3(1.0, 0.0, 0.0);
+        return 1;
 
 	if (p.x < size.x / 5 || p.x > size.x - 1)
 	{
 		if (offset.y > 0)
 		{
-			return vec3(0.0);
+			return 0;
 		}
-		return vec3(1.0, 0.0, 0.0);
+		return 1;
 	}
 
-	return texelFetch(texture1, p, 0).rgb;
+	uint cell = texelFetch(texture1, p, 0).r;
+
+	if(cell == uint(1))
+	{
+		return 1;
+	}
+
+	if(cell == uint(2))
+	{
+		return 2;
+	}
+
+	if(cell == uint(3))
+	{
+		return 3;
+	}
+
+	if(cell == uint(4))
+	{
+		return 4;
+	}
+
+	return 0;
+
 }
 
 uint hash(uvec2 p) 
@@ -52,124 +104,44 @@ void main()
 	
 	bool randLeftFirst = (hash(uvec2(pos)) & 1u) == 0u;
 
-	vec3 cell = texelFetch(texture1, pos, 0).rgb;
-
-	vec3 aboveCell = getPixelValue(ivec2(0.0, 1.0), pos);
-	vec3 aboveRightCell = getPixelValue(ivec2(1.0, 1.0), pos);
-	vec3 aboveLeftCell = getPixelValue(ivec2(-1.0, 1.0), pos);
-
-	vec3 belowCell = getPixelValue(ivec2(0.0, -1.0), pos);
-	vec3 belowRightCell = getPixelValue(ivec2(1.0, -1.0), pos);
-	vec3 belowLeftCell = getPixelValue(ivec2(-1.0, -1.0), pos);
-
-	vec3 rightCell = getPixelValue(ivec2(1.0, 0.0), pos);
-	vec3 leftCell = getPixelValue(ivec2(-1.0, 0.0), pos);
+	int cell = getPixelValue(ivec2(0.0, 0.0), pos);
+	
+	int aboveCell = getPixelValue(ivec2(0.0, 1.0), pos);
+	int aboveRightCell = getPixelValue(ivec2(1.0, 1.0), pos);
+	int aboveLeftCell = getPixelValue(ivec2(-1.0, 1.0), pos);
+	
+	int belowCell = getPixelValue(ivec2(0.0, -1.0), pos);
+	int belowRightCell = getPixelValue(ivec2(1.0, -1.0), pos);
+	int belowLeftCell = getPixelValue(ivec2(-1.0, -1.0), pos);
+	
+	int rightCell = getPixelValue(ivec2(1.0, 0.0), pos);
+	int leftCell = getPixelValue(ivec2(-1.0, 0.0), pos);
 
 	if(distance(vec2(pos), mousePos) < 5 && leftButtonPressed && mousePos.x > size.x / 5 + 5)
 	{
 		newState(spawnColor);
 		return;
 	}
-
-	if(cell.r > 0.0)
-	{
-		if(belowCell.r > 0.5 && belowRightCell.r > 0.5 && belowLeftCell.r > 0.5)
-		{
-			newState(belowCell);
-			return;
-		}
-		if(belowCell.r < 0.1)
-		{
-			newState(vec3(0.0));
-			return;
-		}
-		if((belowRightCell.r < 0.1 || belowLeftCell.r < 0.1) && belowCell.r > 0.5)
-		{
-			newState(vec3(0.0));
-			return;
-		}
-	}
-
-	if(cell.b > 0.0)
-	{
-		if((belowCell.r > 0.5 || belowCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5))
-		{
-			newState(vec3(0.0, 0.0, 1.0));
-			return;
-		}
-		if(belowCell.r < 0.1 && belowCell.b < 0.1)
-		{
-			newState(vec3(0.0));
-			return;
-		}
-		if(((belowRightCell.b < 0.1 && belowRightCell.r < 0.1) || (belowLeftCell.b < 0.1 && belowLeftCell.r < 0.1)) && (belowCell.b > 0.0 || belowCell.r > 0.0))
-		{
-			newState(vec3(0.0));
-			return;
-		}
-		if(aboveCell.r > 0.0)
-		{
-			newState(aboveCell);
-			return;
-		}
-	}
-
-	if(cell.r < 0.1 && cell.b < 0.1)
-	{
-		if(aboveCell.r > 0.0 || aboveCell.b > 0.0)
-		{
-			newState(aboveCell);
-			return;
-		}
-		if(randLeftFirst)
-		{
-			if((aboveRightCell.r > 0.0 || aboveRightCell.b > 0.0) && (rightCell.r > 0.5 || rightCell.b > 0.5))
-			{
-				newState(aboveRightCell);
-				return;
-			}
-			if((aboveLeftCell.r > 0.0 || aboveLeftCell.b > 0.0) && (leftCell.r > 0.5 || leftCell.b > 0.5))
-			{
-				newState(aboveLeftCell);
-				return;
-			}
-			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && leftCell.b > 0.5)
-			{
-				newState(leftCell);
-				return;
-			}
-			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && rightCell.b > 0.5)
-			{
-				newState(rightCell);
-				return;
-			}
-		}
-		else
-		{
-			if((aboveLeftCell.r > 0.0 || aboveLeftCell.b > 0.0) && (leftCell.r > 0.5 || leftCell.b > 0.5))
-			{
-				newState(aboveLeftCell);
-				return;
-			}
-			if((aboveRightCell.r > 0.0 || aboveRightCell.b > 0.0) && (rightCell.r > 0.5 || rightCell.b > 0.5))
-			{
-				newState(aboveRightCell);
-				return;
-			}
-			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && rightCell.b > 0.5)
-			{
-				newState(rightCell);
-				return;
-			}
-			if((belowLeftCell.r > 0.5 || belowLeftCell.b > 0.5) && (belowRightCell.r > 0.5 || belowRightCell.b > 0.5) && (belowCell.r > 0.5 || belowCell.b > 0.5) && leftCell.b > 0.5)
-			{
-				newState(leftCell);
-				return;
-			}
-		}
-
-	}
 	
-	FragColor = vec4(cell, 1.0);
+	if(cell == 0)
+	{
+		outColor = uvec4(0, 0, 0, 1);
+	}
+	if(cell == 1)
+	{
+		outColor = uvec4(1, 0, 0, 1);
+	}
+	if(cell == 2)
+	{
+		outColor = uvec4(2, 0, 0, 1);
+	}
+	if(cell == 3)
+	{
+		outColor = uvec4(3, 0, 0, 1);
+	}
+	if(cell == 4)
+	{
+		outColor = uvec4(4, 0, 0, 1);
+	}
 }
 
