@@ -8,31 +8,49 @@ uniform vec2 mousePos;
 uniform bool leftButtonPressed;
 uniform int spawnColor;
 
+#define Air 0
+#define Sand 1
+#define FallingSand 2
+#define Water 3
+#define FallingWater 4
+#define Gas 5
+#define RisingGas 6
+
 void newState(int value)
 {
-	if(value == 0)
+	if(value == Air)
 	{
 		outColor = uvec4(0, 0, 0, 1);
 		return;
 	}
-	if(value == 1)
+	if(value == Sand)
 	{
 		outColor = uvec4(1, 0, 0, 1);
 		return;
 	}
-	if(value == 2)
+	if(value == FallingSand)
 	{
 		outColor = uvec4(2, 0, 0, 1);
 		return;
 	}
-	if(value == 3)
+	if(value == Water)
 	{
 		outColor = uvec4(3, 0, 0, 1);
 		return;
 	}
-	if(value == 4)
+	if(value == FallingWater)
 	{
 		outColor = uvec4(4, 0, 0, 1);
+		return;
+	}
+	if(value == Gas)
+	{
+		outColor = uvec4(5, 0, 0, 1);
+		return;
+	}
+	if(value == RisingGas)
+	{
+		outColor = uvec4(6, 0, 0, 1);
 		return;
 	}
 	return;
@@ -40,9 +58,11 @@ void newState(int value)
 
 // 0 = air
 // 1 = sand
-// 2 = water
-// 3 = falling sand
+// 2 = falling sand
+// 3 = water
 // 4 = falling water
+// 5 = gas
+// 6 = rising gas
 	
 int getPixelValue(ivec2 offset, ivec2 pos)
 {
@@ -51,40 +71,51 @@ int getPixelValue(ivec2 offset, ivec2 pos)
 	ivec2 p = pos + offset;
 
 	if (p.y < 0)
-        return 1;
-
+        return Sand;
+	if (p.y >= size.y)
+		return Gas;
 	if (p.x < size.x / 5 || p.x > size.x - 1)
 	{
 		if (offset.y > 0)
 		{
-			return 0;
+			return Air;
 		}
-		return 1;
+		return Sand;
 	}
 
 	uint cell = texelFetch(texture1, p, 0).r;
 
-	if(cell == uint(1))
+	if(cell == uint(Sand))
 	{
-		return 1;
+		return Sand;
 	}
 
-	if(cell == uint(2))
+	if(cell == uint(FallingSand))
 	{
-		return 2;
+		return FallingSand;
 	}
 
-	if(cell == uint(3))
+	if(cell == uint(Water))
 	{
-		return 3;
+		return Water;
 	}
 
-	if(cell == uint(4))
+	if(cell == uint(FallingWater))
 	{
-		return 4;
+		return FallingWater;
 	}
 
-	return 0;
+	if(cell == uint(Gas))
+	{
+		return Gas;
+	}
+
+	if(cell == uint(RisingGas))
+	{
+		return RisingGas;
+	}
+
+	return Air;
 
 }
 
@@ -119,29 +150,138 @@ void main()
 
 	if(distance(vec2(pos), mousePos) < 5 && leftButtonPressed && mousePos.x > size.x / 5 + 5)
 	{
-		newState(spawnColor);
-		return;
+		if(cell == Air)
+		{
+			newState(spawnColor);
+			return;
+		}
 	}
 	
-	if(cell == 0)
+	if(cell == Sand)
+	{
+		if(belowCell == Air)
+		{
+			newState(FallingSand);
+			return;
+		}
+	}
+
+	if(cell == Water)
+	{
+		if(belowCell == Air)
+		{
+			newState(FallingWater);
+			return;
+		}
+		if(aboveCell == FallingSand)
+		{
+			newState(FallingSand);
+			return;
+		}
+	}
+
+	if(cell == Gas)
+	{
+		if(belowCell == Air)
+		{
+			newState(RisingGas);
+			return;
+		}
+	}
+
+	if(cell == FallingSand)
+	{
+		if(belowCell == Sand)
+		{
+			newState(Sand);
+			return;
+		}
+		if(belowCell == Water)
+		{
+			newState(Water);
+			return;
+		}
+		if(aboveCell == Air || aboveCell == Gas || aboveCell == RisingGas)
+		{
+			newState(Air);
+			return;
+		}
+	}
+
+	if(cell == FallingWater)
+	{
+		if(belowCell == Sand || belowCell == Water)
+		{
+			newState(Water);
+			return;
+		}
+		if(aboveCell == Air || aboveCell == Gas || aboveCell == RisingGas)
+		{
+			newState(Air);
+			return;
+		}
+	}
+
+	if(cell == RisingGas)
+	{
+		if(aboveCell == Gas)
+		{
+			newState(Gas);
+			return;
+		}
+		if(belowCell != Gas && belowCell != RisingGas)
+		{
+			newState(Air);
+			return;
+		}
+	}
+
+	if(cell == Air)
+	{
+		if(aboveCell == FallingSand)
+		{
+			newState(FallingSand);
+			return;
+		}
+		if(aboveCell == FallingWater)
+		{
+			newState(FallingWater);
+			return;
+		}
+		if(belowCell == RisingGas)
+		{
+			newState(RisingGas);
+			return;
+		}
+	}
+
+	if(cell == Air)
 	{
 		outColor = uvec4(0, 0, 0, 1);
 	}
-	if(cell == 1)
+	if(cell == Sand)
 	{
 		outColor = uvec4(1, 0, 0, 1);
 	}
-	if(cell == 2)
+	if(cell == FallingSand)
 	{
 		outColor = uvec4(2, 0, 0, 1);
 	}
-	if(cell == 3)
+	if(cell == Water)
 	{
 		outColor = uvec4(3, 0, 0, 1);
 	}
-	if(cell == 4)
+	if(cell == FallingWater)
 	{
 		outColor = uvec4(4, 0, 0, 1);
+	}
+	if(cell == Gas)
+	{
+		outColor = uvec4(5, 0, 0, 1);
+	}
+	if(cell == RisingGas)
+	{
+		outColor = uvec4(6, 0, 0, 1);
 	}
 }
 

@@ -132,7 +132,7 @@ GameState gamestate = GAMESTATE_MENU;
 
 void checkButtons(UIElement* buttons, int size);
 
-int spawnColor = 1;
+int spawnColor = 2;
 
 int main()
 {
@@ -222,7 +222,7 @@ int main()
 	createTexture(tex3, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
 	stbi_image_free(data);
 	loadImageData("SandNoise.png", texWidth, texHeight, nrChannels, data);
-	createTexture(sandNoise, GL_RGB, texWidth, texHeight, GL_RED, data);
+	createTexture(sandNoise, GL_RGB, texWidth, texHeight, GL_RGB, data);
 	stbi_image_free(data);
 	loadImageData("StartButton.png", texWidth, texHeight, nrChannels, data);
 	createTexture(tex4, GL_RGBA, texWidth, texHeight, GL_RGBA, data);
@@ -386,11 +386,15 @@ void processInput(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 	{
-		spawnColor = 1;
+		spawnColor = 2;
 	}
 	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 	{
 		spawnColor = 4;
+	}
+	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+	{
+		spawnColor = 6;
 	}
 
 	leftButtonPressed = false;
